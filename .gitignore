@@ -1,0 +1,28 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Credentials & tokens — NEVER commit these
+credentials.json
+token.json
+*.json.bak
+
+# State & logs (machine-specific)
+upload_state.json
+upload.log
+restore.log
+rclone_upload.log
+
+# rclone config (contains OAuth tokens)
+rclone.conf
+
+# macOS
+.DS_Store
+._*
+
+# Editor
+.vscode/
+.idea/
