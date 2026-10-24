@@ -10,6 +10,8 @@
 
 | Document | Purpose |
 |---|---|
+| 🎯 [**RESTORE_PROMPT.md**](RESTORE_PROMPT.md) | **Copy-paste prompt for AI assistant & 1-click terminal commands** upon service return |
+| 🚀 [**restore.sh**](restore.sh) | **1-click executable shell script** for fully automated restoration |
 | 📖 [**RESTORATION_PLAYBOOK.md**](RESTORATION_PLAYBOOK.md) | **Step-by-step recovery guide** after your Mac returns from service or wipe |
 | 🏗️ [**ARCHITECTURE.md**](ARCHITECTURE.md) | **Technical design deep-dive**, benchmarks, and manifest specification |
 | 📋 [**RESTORE_STRATEGY.md**](RESTORE_STRATEGY.md) | Auto-generated batch manifest and checksum reference uploaded to Google Drive |
