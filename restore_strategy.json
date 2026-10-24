@@ -1,6 +1,6 @@
 {
-  "version": "2.0",
-  "created_at": "2026-10-24T02:36:52.369113+00:00",
+  "version": "2.1",
+  "created_at": "2026-10-24T12:06:48.269856+00:00",
   "drive_remote": "gdrive",
   "drive_folder": "m-backup-batches",
   "source": {
@@ -14,7 +14,7 @@
       "target_path": "/Users/dhamo/claude/CMS/YBL/Mobility"
     }
   ],
-  "total_compressed_bytes": 12575077390,
+  "total_compressed_bytes": 12635082714,
   "batches": [
     {
       "batch_id": 1,
@@ -34,9 +34,9 @@
       "items": [
         "repos"
       ],
-      "compressed_bytes": 5884188448,
-      "sha256": "461b184c597c39e81c9851f317b348bfe49f32164ab306d208ce526da23b6d27",
-      "upload_timestamp": "2026-10-24T02:17:30.013907+00:00"
+      "compressed_bytes": 5909188110,
+      "sha256": "9f7ef17e15bfc3fe5208cdea48ab80c0cec46b162c6d31737a0a6edd7e6719ed",
+      "upload_timestamp": "2026-10-24T11:58:52.841834+00:00"
     },
     {
       "batch_id": 3,
@@ -45,9 +45,9 @@
       "items": [
         "artifacts"
       ],
-      "compressed_bytes": 2278911752,
-      "sha256": "6abbccb2c891e17e3c4e7a3c4bce8d4ea375581c9caff0645ca38b4de4a584c3",
-      "upload_timestamp": "2026-10-24T02:27:05.738219+00:00"
+      "compressed_bytes": 2278906695,
+      "sha256": "15bc8d35f6813dbd14c7f2ad5382a28516ac6125e01216c21344f634811599bd",
+      "upload_timestamp": "2026-10-24T12:05:49.992922+00:00"
     },
     {
       "batch_id": 4,
@@ -97,6 +97,7 @@
         "CBX-A11Y-001_Impact_Analysis.pdf",
         "CLAUDE.md",
         "LEARNINGS.md",
+        "Mobile_Cordova-share-20261024.tgz",
         "Mobility.ear",
         "YBL_iOS_AssessmentPDF_08oct2026.pdf",
         "Yes Bank_FS_Accessibility Compliance basis ITE at iGTB_V1.0.docx",
@@ -117,9 +118,9 @@
         "projects",
         "regression"
       ],
-      "compressed_bytes": 266133675,
-      "sha256": "ea2be0ec3e15e709ad12a64789385d1280c39103fa8c208993b952120f3a1196",
-      "upload_timestamp": "2026-10-24T02:36:52.368452+00:00"
+      "compressed_bytes": 301144394,
+      "sha256": "6520bc3d5c119a29424940620ccfa10015748c7adddfc2c2812c6526e72fa192",
+      "upload_timestamp": "2026-10-24T12:06:48.268819+00:00"
     }
   ]
 }

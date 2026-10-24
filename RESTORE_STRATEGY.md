@@ -1,24 +1,24 @@
 # 📋 Google Drive Restore Strategy Document
 
-> **Generated at:** 2026-10-24T02:36:52.369113+00:00  
+> **Last Updated:** 2026-10-24T12:06:48.269856+00:00  
 > **Original Source:** `/Users/dhamo/m` → `/Users/dhamo/claude/CMS/YBL/Mobility`  
 > **Target Remote Folder:** `m-backup-batches`  
 > **Total Compressed Batches:** 7  
-> **Total Compressed Size:** 11.71 GB  
+> **Total Compressed Size:** 11.77 GB  
 
 ---
 
 ## 📦 Backup Archive Batches
 
-| Batch | Archive File | Items Included | Compressed Size | SHA-256 Checksum |
-| :---: | :--- | :--- | :---: | :--- |
-| **1** | `batch_01_bobcr.tar.gz` | `BOBCR` | 1.29 GB | `0a084bb78deb5216...` |
-| **2** | `batch_02_repos.tar.gz` | `repos` | 5.48 GB | `461b184c597c39e8...` |
-| **3** | `batch_03_artifacts.tar.gz` | `artifacts` | 2.12 GB | `6abbccb2c891e17e...` |
-| **4** | `batch_04_server.tar.gz` | `Server` | 1.08 GB | `1226e9938046775f...` |
-| **5** | `batch_05_reference_assets.tar.gz` | `reference-assets` | 516.10 MB | `9c0ab255b9ff949a...` |
-| **6** | `batch_06_tools_and_logs.tar.gz` | `screens`, `jenkins`, `tools`, `LOGS` | 1006.27 MB | `6750ff5786ecbee4...` |
-| **7** | `batch_07_root_and_configs.tar.gz` | `.backup-2026-10-01`, `.claude`, `BDTS_PlanDesign_Business_Requirment_Accessibility Compliance basis ITE at IGTB (1).docx.md`, `CBX-A11Y-001_FSD_Accessibility_Options.pdf` (+22 more) | 253.80 MB | `ea2be0ec3e15e709...` |
+| Batch | Archive File | Items Included | Compressed Size | SHA-256 Checksum | Last Uploaded |
+| :---: | :--- | :--- | :---: | :--- | :--- |
+| **1** | `batch_01_bobcr.tar.gz` | `BOBCR` | 1.29 GB | `0a084bb78deb5216...` | 2026-10-24 02:04:41 |
+| **2** | `batch_02_repos.tar.gz` | `repos` | 5.50 GB | `9f7ef17e15bfc3fe...` | 2026-10-24 11:58:52 |
+| **3** | `batch_03_artifacts.tar.gz` | `artifacts` | 2.12 GB | `15bc8d35f6813dbd...` | 2026-10-24 12:05:49 |
+| **4** | `batch_04_server.tar.gz` | `Server` | 1.08 GB | `1226e9938046775f...` | 2026-10-24 02:31:26 |
+| **5** | `batch_05_reference_assets.tar.gz` | `reference-assets` | 516.10 MB | `9c0ab255b9ff949a...` | 2026-10-24 02:32:52 |
+| **6** | `batch_06_tools_and_logs.tar.gz` | `screens`, `jenkins`, `tools`, `LOGS` | 1006.27 MB | `6750ff5786ecbee4...` | 2026-10-24 02:34:43 |
+| **7** | `batch_07_root_and_configs.tar.gz` | `.backup-2026-10-01`, `.claude`, `BDTS_PlanDesign_Business_Requirment_Accessibility Compliance basis ITE at IGTB (1).docx.md`, `CBX-A11Y-001_FSD_Accessibility_Options.pdf` (+23 more) | 287.19 MB | `6520bc3d5c119a29...` | 2026-10-24 12:06:48 |
 
 ---
 
@@ -31,7 +31,9 @@ When restoring on your newly serviced or wiped Mac:
 brew install rclone
 rclone config create gdrive drive scope=drive use_trash=false
 
-# 2. Clone or run gdrive_restore.py
+# 2. Clone and run restore
+git clone https://github.com/techdhamo/gdrive-backup-restore.git ~/restore
+cd ~/restore
 python3 gdrive_restore.py
 ```
 
@@ -44,4 +46,4 @@ python3 gdrive_restore.py
 6. Recreates `/Users/dhamo/m` symlink pointing to the restored project.
 
 ---
-*End of Strategy Document — Version 2.0*
+*End of Strategy Document — Version 2.1*
