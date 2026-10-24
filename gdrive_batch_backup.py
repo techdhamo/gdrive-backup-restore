@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║        Google Drive Batch-Compressed Backup Tool v2.0                ║
-║  Compress Batch-by-Batch, Upload, Generate & Upload Restore Strategy ║
+║        Google Drive Batch-Compressed Backup Tool v2.1                ║
+║  Smart Incremental Replacement: Detects Modified Batches & Uploads   ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-Strategy:
-  1. Divides ~/m into logical archive batches (BOBCR, repos, artifacts, etc.)
-  2. Compresses batch-by-batch into .tar.gz (tar streaming)
-  3. Computes SHA-256 hash & metrics
-  4. Uploads immediately to Google Drive (rclone high-speed chunked stream)
-  5. Deletes local archive immediately after upload (zero disk bloat)
-  6. Generates restore_strategy.json + RESTORE_STRATEGY.md
-  7. Uploads strategy documents to Google Drive for automated restore
+Features:
+  1. Detects modified files inside batches since last backup (fast early exit).
+  2. If content modified: re-compresses, re-hashes with SHA-256, and replaces
+     the archive on Google Drive.
+  3. If content unchanged: retains existing verified Drive archive (saves bandwidth & time).
+  4. Ephemeral local staging: deletes each local archive immediately after upload.
+  5. Updates restore_strategy.json & RESTORE_STRATEGY.md and uploads them to Drive.
 """
 
 import os
@@ -66,6 +65,45 @@ def format_bytes(n: int) -> str:
     return f"{n:.2f} PB"
 
 
+def check_batch_modified(source_real: Path, items: list[str], last_upload_iso: str | None) -> tuple[bool, str]:
+    """
+    Checks if any file inside the batch items was modified after last_upload_iso.
+    Returns (True, reason) if modified, or (False, "unchanged") if clean.
+    """
+    if not last_upload_iso:
+        return True, "No previous backup record found"
+    
+    try:
+        cutoff = datetime.fromisoformat(last_upload_iso).timestamp()
+    except Exception:
+        return True, "Invalid timestamp in state"
+    
+    for item in items:
+        p = source_real / item
+        if not p.exists():
+            continue
+        try:
+            if p.is_symlink():
+                continue
+            if p.is_file():
+                if p.stat().st_mtime > cutoff:
+                    return True, f"Modified file: {item}"
+            elif p.is_dir():
+                for root, _, files in os.walk(p):
+                    for f in files:
+                        fp = os.path.join(root, f)
+                        try:
+                            if not os.path.islink(fp) and os.path.getmtime(fp) > cutoff:
+                                rel = os.path.relpath(fp, source_real)
+                                return True, f"Modified file: {rel}"
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    return False, "All files clean (no modifications)"
+
+
 def discover_batches(source_dir: Path):
     """
     Scans source directory and groups items into logical batches.
@@ -76,7 +114,7 @@ def discover_batches(source_dir: Path):
     batches = []
     batch_num = 1
     
-    # 1. Major folders get their own batches for isolation & parallel speed
+    # 1. Major folders get their own batches
     priority_dirs = [
         ("BOBCR", "batch_01_bobcr.tar.gz", "BOBCR database scripts, comparisons, and tools"),
         ("repos", "batch_02_repos.tar.gz", "Git & code repositories (IDFC, Mobile, YBL, etc.)"),
@@ -124,17 +162,12 @@ def discover_batches(source_dir: Path):
     return batches
 
 
-def rclone_file_exists(remote: str, drive_path: str, filename: str) -> bool:
-    cmd = [RCLONE, "lsf", f"{remote}:{drive_path}/{filename}"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return res.returncode == 0 and filename in res.stdout
-
-
 def upload_file_rclone(local_path: Path, remote: str, drive_path: str, max_workers: int = 8):
+    """Uploads file using rclone, overwriting remote target if it exists."""
     cmd = [
-        RCLONE, "copy",
+        RCLONE, "copyto",
         str(local_path),
-        f"{remote}:{drive_path}",
+        f"{remote}:{drive_path}/{local_path.name}",
         "--transfers", str(max_workers),
         "--drive-chunk-size", "64M",
         "--drive-upload-cutoff", "64M",
@@ -149,7 +182,7 @@ def generate_restore_strategy_md(strategy: dict) -> str:
     lines = [
         "# 📋 Google Drive Restore Strategy Document",
         "",
-        f"> **Generated at:** {strategy['created_at']}  ",
+        f"> **Last Updated:** {strategy['created_at']}  ",
         f"> **Original Source:** `{strategy['source']['symlink_path']}` → `{strategy['source']['real_path']}`  ",
         f"> **Target Remote Folder:** `{strategy['drive_folder']}`  ",
         f"> **Total Compressed Batches:** {len(strategy['batches'])}  ",
@@ -159,15 +192,16 @@ def generate_restore_strategy_md(strategy: dict) -> str:
         "",
         "## 📦 Backup Archive Batches",
         "",
-        "| Batch | Archive File | Items Included | Compressed Size | SHA-256 Checksum |",
-        "| :---: | :--- | :--- | :---: | :--- |",
+        "| Batch | Archive File | Items Included | Compressed Size | SHA-256 Checksum | Last Uploaded |",
+        "| :---: | :--- | :--- | :---: | :--- | :--- |",
     ]
     for b in strategy["batches"]:
         items_str = ", ".join(f"`{i}`" for i in b["items"][:4])
         if len(b["items"]) > 4:
             items_str += f" (+{len(b['items'])-4} more)"
+        ts = b.get("upload_timestamp", "")[:19].replace("T", " ")
         lines.append(
-            f"| **{b['batch_id']}** | `{b['archive_name']}` | {items_str} | {format_bytes(b['compressed_bytes'])} | `{b['sha256'][:16]}...` |"
+            f"| **{b['batch_id']}** | `{b['archive_name']}` | {items_str} | {format_bytes(b['compressed_bytes'])} | `{b['sha256'][:16]}...` | {ts} |"
         )
 
     lines.extend([
@@ -183,7 +217,9 @@ def generate_restore_strategy_md(strategy: dict) -> str:
         "brew install rclone",
         "rclone config create gdrive drive scope=drive use_trash=false",
         "",
-        "# 2. Clone or run gdrive_restore.py",
+        "# 2. Clone and run restore",
+        "git clone https://github.com/techdhamo/gdrive-backup-restore.git ~/restore",
+        "cd ~/restore",
         "python3 gdrive_restore.py",
         "```",
         "",
@@ -201,22 +237,24 @@ def generate_restore_strategy_md(strategy: dict) -> str:
     return "\n".join(lines)
 
 
-def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
+def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False, force: bool = False):
     print(f"\n{Fore.CYAN}{'═'*68}")
-    print(f"  🚀  Batch-Compressed Google Drive Backup & Strategy Generator")
+    print(f"  🚀  Batch-Compressed Google Drive Backup & Smart Sync v2.1")
     print(f"{'═'*68}{Style.RESET_ALL}")
     print(f"  Source (Link): {SOURCE_LINK}")
     print(f"  Source (Real): {SOURCE_REAL}")
     print(f"  Drive Remote : {remote}:{drive_folder}")
     print(f"  Staging Dir  : {STAGING_DIR}")
+    if force:
+        print(f"  {Fore.YELLOW}⚡ FORCE MODE — Re-compressing and replacing ALL batches{Style.RESET_ALL}")
     if dry_run:
-        print(f"  {Fore.YELLOW}⚠  DRY RUN MODE — no archives will be created or uploaded{Style.RESET_ALL}")
+        print(f"  {Fore.YELLOW}⚠  DRY RUN MODE — no archives will be uploaded{Style.RESET_ALL}")
     print()
 
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     batches = discover_batches(SOURCE_REAL)
 
-    # Load state if resuming
+    # Load state if exists
     state = {}
     if STATE_FILE.exists():
         try:
@@ -228,6 +266,7 @@ def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
     completed_batches = state.get("completed_batches", {})
     strategy_batches = []
     total_compressed = 0
+    modified_batches_count = 0
 
     print(f"{Fore.GREEN}Plan: Discovered {len(batches)} archive batches:{Style.RESET_ALL}")
     for b in batches:
@@ -237,27 +276,41 @@ def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
     for idx, b in enumerate(batches, 1):
         archive_name = b["archive_name"]
         print(f"{Fore.YELLOW}{'─'*68}")
-        print(f"  📦 Processing Batch {idx}/{len(batches)}: {archive_name}")
+        print(f"  📦 Checking Batch {idx}/{len(batches)}: {archive_name}")
         print(f"     Items: {', '.join(b['items'][:6])}")
         print(f"{'─'*68}{Style.RESET_ALL}")
 
-        # Check if already completed and in Drive
-        if archive_name in completed_batches:
-            meta = completed_batches[archive_name]
-            print(f"{Fore.GREEN}✓  Already uploaded according to state: {format_bytes(meta['compressed_bytes'])} (SHA: {meta['sha256'][:12]}...){Style.RESET_ALL}")
-            strategy_batches.append(meta)
-            total_compressed += meta["compressed_bytes"]
+        prev_meta = completed_batches.get(archive_name)
+        last_ts = prev_meta.get("upload_timestamp") if prev_meta else None
+
+        # Check if content has been modified
+        if force:
+            is_modified = True
+            reason = "Forced replacement (--force specified)"
+        else:
+            is_modified, reason = check_batch_modified(SOURCE_REAL, b["items"], last_ts)
+
+        if not is_modified and prev_meta:
+            print(f"  {Fore.GREEN}✓ No modifications detected.{Style.RESET_ALL}")
+            print(f"    Keeping verified archive on Drive: {format_bytes(prev_meta['compressed_bytes'])} (SHA: {prev_meta['sha256'][:12]}...)")
+            strategy_batches.append(prev_meta)
+            total_compressed += prev_meta["compressed_bytes"]
             continue
 
+        print(f"  {Fore.MAGENTA}⚡ Modifications detected: {reason}{Style.RESET_ALL}")
+        print(f"     Re-compressing & replacing {archive_name} on Google Drive …")
+        modified_batches_count += 1
+
         if dry_run:
-            print(f"  [Dry Run] Would compress {b['items']} -> {archive_name} and upload to Drive")
+            print(f"  [Dry Run] Would compress {b['items']} -> {archive_name} and replace on Drive")
             strategy_batches.append({
                 "batch_id": b["batch_id"],
                 "archive_name": archive_name,
                 "description": b["description"],
                 "items": b["items"],
-                "compressed_bytes": 0,
+                "compressed_bytes": prev_meta.get("compressed_bytes", 0) if prev_meta else 0,
                 "sha256": "dry-run-hash",
+                "upload_timestamp": datetime.now(timezone.utc).isoformat(),
             })
             continue
 
@@ -277,17 +330,17 @@ def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
         print(f"  ✓ Compressed in {comp_dur:.1f}s | Size: {Fore.GREEN}{format_bytes(arch_size)}{Style.RESET_ALL}")
 
         # 2. Compute SHA-256
-        print(f"  🔒 Calculating SHA-256 checksum …")
+        print(f"  🔒 Calculating new SHA-256 checksum …")
         sha = sha256_file(local_archive)
-        print(f"     SHA-256: {Fore.CYAN}{sha}{Style.RESET_ALL}")
+        print(f"     New SHA-256: {Fore.CYAN}{sha}{Style.RESET_ALL}")
 
-        # 3. Upload to Google Drive
-        print(f"  ☁ Uploading {archive_name} to {remote}:{drive_folder}/archives/ …")
+        # 3. Upload and replace on Google Drive
+        print(f"  ☁ Uploading & replacing {archive_name} at {remote}:{drive_folder}/archives/ …")
         t_up0 = time.time()
         upload_file_rclone(local_archive, remote, f"{drive_folder}/archives")
         up_dur = time.time() - t_up0
         speed_mbps = (arch_size * 8 / (1024 * 1024)) / max(up_dur, 0.1)
-        print(f"  ✓ Uploaded in {up_dur:.1f}s | Average Speed: {speed_mbps:.1f} Mbps")
+        print(f"  ✓ Replaced on Drive in {up_dur:.1f}s | Speed: {speed_mbps:.1f} Mbps")
 
         # 4. Immediate local cleanup
         print(f"  🧹 Cleaning up local archive {archive_name} to free disk space …")
@@ -313,7 +366,7 @@ def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
 
     # 5. Build Restore Strategy Document
     strategy = {
-        "version": "2.0",
+        "version": "2.1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "drive_remote": remote,
         "drive_folder": drive_folder,
@@ -342,26 +395,29 @@ def run_batch_backup(remote: str, drive_folder: str, dry_run: bool = False):
         f.write(generate_restore_strategy_md(strategy))
 
     print(f"\n{Fore.GREEN}{'═'*68}")
-    print(f"  🎉 All batches compressed & uploaded successfully!")
-    print(f"  Total Compressed Size: {format_bytes(total_compressed)}")
+    print(f"  🎉 Sync complete! Modified batches replaced: {modified_batches_count}/{len(batches)}")
+    print(f"  Total Backup Size: {format_bytes(total_compressed)}")
     print(f"{'═'*68}{Style.RESET_ALL}\n")
 
-    if not dry_run:
-        print(f"{Fore.CYAN}Uploading restore strategy documents to {remote}:{drive_folder}/ …{Style.RESET_ALL}")
+    if not dry_run and modified_batches_count > 0:
+        print(f"{Fore.CYAN}Uploading updated restore strategy documents to {remote}:{drive_folder}/ …{Style.RESET_ALL}")
         upload_file_rclone(strategy_json_path, remote, drive_folder)
         upload_file_rclone(strategy_md_path, remote, drive_folder)
-        print(f"{Fore.GREEN}✓ restore_strategy.json and RESTORE_STRATEGY.md live on Google Drive!{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}✓ Updated restore_strategy.json and RESTORE_STRATEGY.md live on Google Drive!{Style.RESET_ALL}")
+    elif modified_batches_count == 0:
+        print(f"{Fore.GREEN}✓ All archives on Drive were already up to date.{Style.RESET_ALL}")
 
-    print(f"\n{Fore.CYAN}Backup complete! Restore tool is ready to use:{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}Restore tool is ready to use:{Style.RESET_ALL}")
     print(f"  python3 gdrive_restore.py\n")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Google Drive Batch-Compressed Backup Tool")
+    parser = argparse.ArgumentParser(description="Google Drive Batch-Compressed Backup Tool v2.1")
     parser.add_argument("--remote", default=DEFAULT_REMOTE, help="rclone remote name")
     parser.add_argument("--folder", default=DEFAULT_FOLDER, help="Drive destination folder")
     parser.add_argument("--dry-run", action="store_true", help="Preview batches without uploading")
+    parser.add_argument("--force", action="store_true", help="Force re-compress and replace all batches regardless of mtime")
     args = parser.parse_args()
 
     check_rclone()
-    run_batch_backup(args.remote, args.folder, dry_run=args.dry_run)
+    run_batch_backup(args.remote, args.folder, dry_run=args.dry_run, force=args.force)
