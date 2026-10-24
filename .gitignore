@@ -15,6 +15,10 @@ upload_state.json
 upload.log
 restore.log
 rclone_upload.log
+batch_backup_state.json
+staging/
+restore_staging/
+*.tar.gz
 
 # rclone config (contains OAuth tokens)
 rclone.conf

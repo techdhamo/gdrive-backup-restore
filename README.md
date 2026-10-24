@@ -1,24 +1,63 @@
 # 🚀 gdrive-backup-restore
 
-> High-speed Google Drive backup & restore tool — 12 parallel streams, resumable uploads, tuned for 300 Mbps connections.
+> Enterprise-grade, high-speed Google Drive backup & restore toolkit.  
+> Supports **Batch-Compressed Streaming with Automated Restore Strategies (v2.0)**, tuned for 300+ Mbps connections.
 
 ---
 
-## Features
+## 🌟 Architecture & Strategy (v2.0)
+
+When backing up workspaces containing hundreds of thousands or millions of files (e.g. node_modules, svn, database dumps, build artifacts), individual file uploads encounter extreme HTTP request latency.
+
+**`gdrive-backup-restore v2.0` solves this with Batch-Compression & Strategy Manifests:**
+
+```
+[ ~/m (~28.4 GB, 1.2M files) ]
+       │
+       ▼
+ 1. Discover & Group Into Batches (BOBCR, repos, artifacts, server, tools, root)
+       │
+       ▼ (Batch-by-Batch Pipeline)
+ 2. Compress to .tar.gz ──► 3. Compute SHA-256 ──► 4. Upload to Drive ──► 5. Delete Local Archive
+                                                                             (Zero disk bloat)
+       │
+       ▼
+ 6. Generate `restore_strategy.json` & `RESTORE_STRATEGY.md`
+       │
+       ▼
+ 7. Upload Strategy Docs to Drive Root
+```
+
+```
+[ After Mac Service / Restoration ]
+       │
+       ▼
+ 1. Run `python3 gdrive_restore.py`
+ 2. Program downloads `restore_strategy.json` from Drive
+ 3. Downloads archives batch-by-batch
+ 4. Validates SHA-256 integrity
+ 5. Extracts to target directory (`/Users/dhamo/claude/CMS/YBL/Mobility`)
+ 6. Deletes local `.tar.gz` after extraction
+ 7. Reconstructs symlinks (`~/m -> /Users/dhamo/claude/CMS/YBL/Mobility`)
+```
+
+---
+
+## ✨ Features
 
 | Feature | Detail |
 |---|---|
-| ⚡ **Parallel transfers** | 12 simultaneous streams (configurable) |
-| 📦 **Large chunk size** | 32 MB chunks — fewer round-trips on fast lines |
-| 🔄 **Resumable** | Interrupted uploads/downloads continue where they left off |
-| 🗂️ **Mirror structure** | Exact folder hierarchy preserved on Drive |
-| 🔒 **Safe restore** | Skip/overwrite/backup conflict modes |
-| 📋 **Full logging** | Per-run log files for audit trail |
-| 🔌 **rclone powered** | Battle-tested, no API quota headaches |
+| ⚡ **Batch Compression** | Groups 1.2M files into 7 balanced, high-speed archives |
+| 🔒 **Cryptographic Integrity** | SHA-256 checksum calculated and verified for every batch |
+| 📋 **Strategy Manifest** | Auto-generates `restore_strategy.json` and human-readable `RESTORE_STRATEGY.md` |
+| 🧹 **Zero Disk Waste** | Local `.tar.gz` is immediately deleted after upload/extraction |
+| 🔄 **100% Resumable** | State file tracks uploaded batches; resumes instantly if interrupted |
+| 🔗 **Symlink Preservation** | Records and restores directory symlinks accurately |
+| 🔌 **High Speed** | Tuned for 300 Mbps bandwidth (64 MB chunks, multi-threaded) |
 
 ---
 
-## Prerequisites
+## 🛠️ Prerequisites
 
 ```bash
 # Install rclone (one-time)
@@ -28,150 +67,93 @@ brew install rclone
 rclone config create gdrive drive scope=drive use_trash=false
 ```
 
-Follow the browser prompt → sign in → Allow → done.
+---
+
+## 🚀 Usage
+
+### 1. Run Batch Backup (Recommended)
+
+Compresses batch by batch, uploads, frees disk space, and uploads the restore strategy:
+
+```bash
+python3 gdrive_batch_backup.py
+```
+
+Options:
+- `--folder <name>`: Drive folder (default: `m-backup-batches`)
+- `--dry-run`: Preview batch division and calculations without uploading
 
 ---
 
-## Backup (Upload to Google Drive)
+### 2. Restore After Mac Service
 
-### Quick start
+Once your Mac is serviced or wiped:
+
 ```bash
-./setup_and_run.sh
-```
+# 1. Install & configure rclone
+brew install rclone
+rclone config create gdrive drive scope=drive use_trash=false
 
-### Manual
-```bash
-rclone copy /Users/dhamo/m gdrive:m-backup \
-  --transfers 12 \
-  --drive-chunk-size 32M \
-  --drive-upload-cutoff 32M \
-  --checkers 16 \
-  --exclude "gdrive_upload/**" \
-  --exclude ".DS_Store" \
-  --stats 10s \
-  -P
-```
-
-### Options
-| Flag | Default | Description |
-|---|---|---|
-| `--transfers` | 12 | Parallel upload streams |
-| `--drive-chunk-size` | 32M | Upload chunk size |
-| `--exclude` | — | Glob patterns to skip |
-| `-P` | — | Show live progress |
-
----
-
-## Restore (Download from Google Drive)
-
-After Mac service, migration, or fresh install — restore everything back to the original path.
-
-### Quick start
-```bash
+# 2. Run restore (reads strategy document automatically from Drive)
 python3 gdrive_restore.py
 ```
 
-This auto-detects the latest `m-backup` folder on Drive and downloads to `/Users/dhamo/m`.
-
-### Options
-
-```bash
-# Preview what will be restored (no files downloaded)
-python3 gdrive_restore.py --dry-run
-
-# List all available backup folders on Drive
-python3 gdrive_restore.py --list
-
-# Restore from a specific backup
-python3 gdrive_restore.py --drive-folder m-backup-20261024
-
-# Restore to a different path
-python3 gdrive_restore.py --dest /Users/dhamo/restored
-
-# Overwrite existing files instead of skipping
-python3 gdrive_restore.py --conflict overwrite
-
-# Backup existing files before overwriting
-python3 gdrive_restore.py --conflict backup
-
-# Adjust parallel streams
-python3 gdrive_restore.py --workers 8
-```
-
-### Conflict modes
-
-| Mode | Behaviour |
-|---|---|
-| `skip` *(default)* | Keep existing local file — safe for partial restores |
-| `overwrite` | Replace local file with the Drive version |
-| `backup` | Move existing local file to a timestamped backup dir, then restore |
+Options:
+- `--dest <path>`: Custom restore path (default: `/Users/dhamo/claude/CMS/YBL/Mobility`)
+- `--batch <id>`: Restore only a single batch (e.g. `--batch 1`)
+- `--dry-run`: Simulate download, verification, and extraction
+- `--list`: List all backup folders on Drive
 
 ---
 
-## Full Reference
+## 📦 What Batches Are Created?
 
-### Backup script: `setup_and_run.sh`
-Installs dependencies and runs rclone upload with all optimised flags.
+| Batch | Archive | Contents |
+|:---:|:---|:---|
+| **1** | `batch_01_bobcr.tar.gz` | `BOBCR/` (Database scripts, comparisons, UAT/Dev dumps) |
+| **2** | `batch_02_repos.tar.gz` | `repos/` (Git repositories: IDFC, Mobile, YBL, etc.) |
+| **3** | `batch_03_artifacts.tar.gz` | `artifacts/` (Build deliverables, mobile reports) |
+| **4** | `batch_04_server.tar.gz` | `Server/` (Runtimes and server configs) |
+| **5** | `batch_05_reference_assets.tar.gz` | `reference-assets/` (Documentation assets, prototypes) |
+| **6** | `batch_06_tools_and_logs.tar.gz` | `screens/`, `jenkins/`, `tools/`, `LOGS/` |
+| **7** | `batch_07_root_and_configs.tar.gz` | Root files, `.claude/`, markdown guides, PDFs, `Mobility.ear` |
 
-### Python uploader: `gdrive_uploader.py`
-Alternative Python-based uploader using the Google Drive API directly.
-Useful if rclone is not available or you need custom upload logic.
+---
 
-```bash
-source venv/bin/activate
-python3 gdrive_uploader.py --workers 12 --drive-folder my-backup
-```
+## 📜 Restore Strategy Format (`restore_strategy.json`)
 
-### Restore script: `gdrive_restore.py`
-Downloads from Google Drive back to the local machine.
-
-```bash
-python3 gdrive_restore.py --help
+```json
+{
+  "version": "2.0",
+  "created_at": "2026-10-24T07:30:00Z",
+  "drive_folder": "m-backup-batches",
+  "source": {
+    "symlink_path": "/Users/dhamo/m",
+    "real_path": "/Users/dhamo/claude/CMS/YBL/Mobility"
+  },
+  "restore_destination_default": "/Users/dhamo/claude/CMS/YBL/Mobility",
+  "symlinks_to_create": [
+    {
+      "link_path": "/Users/dhamo/m",
+      "target_path": "/Users/dhamo/claude/CMS/YBL/Mobility"
+    }
+  ],
+  "total_compressed_bytes": 10485760000,
+  "batches": [
+    {
+      "batch_id": 1,
+      "archive_name": "batch_01_bobcr.tar.gz",
+      "description": "BOBCR database scripts, comparisons, and tools",
+      "items": ["BOBCR"],
+      "compressed_bytes": 1610612736,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ]
+}
 ```
 
 ---
 
-## Project Structure
+## 🛡️ License
 
-```
-gdrive_upload/
-├── README.md               ← This file
-├── setup_and_run.sh        ← One-click backup launcher
-├── gdrive_uploader.py      ← Python Drive API uploader
-├── gdrive_restore.py       ← Restore from Drive to local
-├── requirements.txt        ← Python dependencies
-├── .gitignore              ← Excludes credentials & logs
-│
-│   (generated at runtime — not committed)
-├── upload_state.json       ← Resume state for Python uploader
-├── upload.log              ← Python uploader log
-├── restore.log             ← Restore log
-└── rclone_upload.log       ← rclone upload log
-```
-
----
-
-## Performance Guide
-
-| Connection | Recommended `--transfers` | Expected Speed |
-|---|---|---|
-| 50 Mbps | 4 | ~5 MB/s |
-| 100 Mbps | 6 | ~10 MB/s |
-| 300 Mbps | **12** | ~25–35 MB/s |
-| 1 Gbps | 20 | ~80 MB/s |
-
-> **Note:** Google Drive may throttle very large uploads after ~100 GB/day. If you hit rate limits, reduce `--transfers` to 6.
-
----
-
-## Security
-
-- **Never commit** `credentials.json`, `token.json`, or `rclone.conf` — all are in `.gitignore`
-- rclone stores OAuth tokens in `~/.config/rclone/rclone.conf` (your home directory, not this repo)
-- The Python uploader stores tokens in `token.json` locally (also git-ignored)
-
----
-
-## License
-
-MIT — free to use and modify.
+MIT License. Crafted with precision for high-performance backups.
