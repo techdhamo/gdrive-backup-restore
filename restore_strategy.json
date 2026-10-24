@@ -1,0 +1,125 @@
+{
+  "version": "2.0",
+  "created_at": "2026-10-24T02:36:52.369113+00:00",
+  "drive_remote": "gdrive",
+  "drive_folder": "m-backup-batches",
+  "source": {
+    "symlink_path": "/Users/dhamo/m",
+    "real_path": "/Users/dhamo/claude/CMS/YBL/Mobility"
+  },
+  "restore_destination_default": "/Users/dhamo/claude/CMS/YBL/Mobility",
+  "symlinks_to_create": [
+    {
+      "link_path": "/Users/dhamo/m",
+      "target_path": "/Users/dhamo/claude/CMS/YBL/Mobility"
+    }
+  ],
+  "total_compressed_bytes": 12575077390,
+  "batches": [
+    {
+      "batch_id": 1,
+      "archive_name": "batch_01_bobcr.tar.gz",
+      "description": "BOBCR database scripts, comparisons, and tools",
+      "items": [
+        "BOBCR"
+      ],
+      "compressed_bytes": 1389173110,
+      "sha256": "0a084bb78deb5216ed14d621f7720b2eab3fda0b6bd3a6969af8829189dfcc12",
+      "upload_timestamp": "2026-10-24T02:04:41.126607+00:00"
+    },
+    {
+      "batch_id": 2,
+      "archive_name": "batch_02_repos.tar.gz",
+      "description": "Git & code repositories (IDFC, Mobile, YBL, etc.)",
+      "items": [
+        "repos"
+      ],
+      "compressed_bytes": 5884188448,
+      "sha256": "461b184c597c39e81c9851f317b348bfe49f32164ab306d208ce526da23b6d27",
+      "upload_timestamp": "2026-10-24T02:17:30.013907+00:00"
+    },
+    {
+      "batch_id": 3,
+      "archive_name": "batch_03_artifacts.tar.gz",
+      "description": "Project artifacts, builds, and deliverables",
+      "items": [
+        "artifacts"
+      ],
+      "compressed_bytes": 2278911752,
+      "sha256": "6abbccb2c891e17e3c4e7a3c4bce8d4ea375581c9caff0645ca38b4de4a584c3",
+      "upload_timestamp": "2026-10-24T02:27:05.738219+00:00"
+    },
+    {
+      "batch_id": 4,
+      "archive_name": "batch_04_server.tar.gz",
+      "description": "Server runtimes and local configurations",
+      "items": [
+        "Server"
+      ],
+      "compressed_bytes": 1160347952,
+      "sha256": "1226e9938046775fc79976869eb8f0d1284df631e684508a3e79d861ba9f5b02",
+      "upload_timestamp": "2026-10-24T02:31:26.330744+00:00"
+    },
+    {
+      "batch_id": 5,
+      "archive_name": "batch_05_reference_assets.tar.gz",
+      "description": "Reference assets and mobile documentation",
+      "items": [
+        "reference-assets"
+      ],
+      "compressed_bytes": 541171535,
+      "sha256": "9c0ab255b9ff949aff26fd519dea531b6fbf8c995032c8466545d041547b7c3a",
+      "upload_timestamp": "2026-10-24T02:32:52.549516+00:00"
+    },
+    {
+      "batch_id": 6,
+      "archive_name": "batch_06_tools_and_logs.tar.gz",
+      "description": "Screens, Jenkins configs, tooling, and development logs",
+      "items": [
+        "screens",
+        "jenkins",
+        "tools",
+        "LOGS"
+      ],
+      "compressed_bytes": 1055150918,
+      "sha256": "6750ff5786ecbee4fbbfbe215558613653896e2ef78f172031c7891f735128a5",
+      "upload_timestamp": "2026-10-24T02:34:43.070468+00:00"
+    },
+    {
+      "batch_id": 7,
+      "archive_name": "batch_07_root_and_configs.tar.gz",
+      "description": "Project configs, documentation, PDFs, and root assets",
+      "items": [
+        ".backup-2026-10-01",
+        ".claude",
+        "BDTS_PlanDesign_Business_Requirment_Accessibility Compliance basis ITE at IGTB (1).docx.md",
+        "CBX-A11Y-001_FSD_Accessibility_Options.pdf",
+        "CBX-A11Y-001_Impact_Analysis.pdf",
+        "CLAUDE.md",
+        "LEARNINGS.md",
+        "Mobility.ear",
+        "YBL_iOS_AssessmentPDF_08oct2026.pdf",
+        "Yes Bank_FS_Accessibility Compliance basis ITE at iGTB_V1.0.docx",
+        "cbx-reference",
+        "cbxserverlog.png",
+        "eMACH.ai PROSE30 \u2014 28 questions we provide assurance on.html",
+        "eMACH.ai PROSE30 \u2014 The Non-Functional Requirements Framework.html",
+        "eMACH.ai PROSE30 \u2014 The Spatial Graph \u00b7 Bank & NFR Architect.html",
+        "eMACH.ai PROSE30 \u2014 the framework on one sheet (A0).html",
+        "iq-certificate.avif",
+        "iq-certificate.png",
+        "iq-certificate1.png",
+        "log.png",
+        "log1.png",
+        "log2.png",
+        "mobility-product-knowledge",
+        "open appsec ios.png",
+        "projects",
+        "regression"
+      ],
+      "compressed_bytes": 266133675,
+      "sha256": "ea2be0ec3e15e709ad12a64789385d1280c39103fa8c208993b952120f3a1196",
+      "upload_timestamp": "2026-10-24T02:36:52.368452+00:00"
+    }
+  ]
+}
